@@ -15,7 +15,7 @@ int main(int argc, char **argv)
     {
         int port = std::atoi(argv[1]);
         Server server(port, argv[2]);
-        server.start();
+        server.pollLoop();
     }
     catch (const ServerException &e)
     {

@@ -80,7 +80,6 @@ void Server::initSocket()
 }
 
 
-// pour plus de clarte sur cette fonction, voir 'start_example.cpp'
 void Server::start()
 {
 	std::cout << "Server is listening on port " << _port << std::endl;
@@ -131,77 +130,4 @@ void Server::start()
 
     close(clientSocket);
     std::cout << "Connexion client fermée." << std::endl;
-}
-
-void Server::pollLoop() {
-
-    /* cette struct est inherente a <poll.h>, je n'invente rien ici
-        je repompe juste le MAN
-
-        struct pollfd {
-            int fd;         // Le file descriptor à surveiller (ex : ton socket serveur ou un socket client)
-            short events;   // Ce qu’on veut surveiller (lecture, écriture, etc.)
-            short revents;  // Ce que poll() a détecté (rempli par poll())
-        };
-    */
-
-	std::vector<struct pollfd> fds;
-
-	struct pollfd servFd;
-	servFd.fd = _servSocket;
-	servFd.events = POLLIN;
-	fds.push_back(servFd);
-
-	while (true)
-    {
-		int ready = poll(&fds[0], fds.size(), -1);
-		if (ready < 0) throw ServerException("poll() failed");
-
-		for (size_t i = 0; i < fds.size(); ++i)
-        {
-			if (fds[i].revents & POLLIN)
-            {
-				if (fds[i].fd == _servSocket)
-                {
-				    sockaddr_in clientAddr;
-                    socklen_t clientLen = sizeof(clientAddr);
-                    int clientSocket = accept(_servSocket, (sockaddr*)&clientAddr, &clientLen);
-
-                    if (clientSocket < 0)
-                    {
-                        std::cerr << "accept() failed (non bloquant, peut arriver) fd: " << _servSocket << std::endl;
-                        continue;
-                    }
-
-                    std::cout << "Client connecté ! (fd: " << clientSocket << ")" << std::endl;
-
-                    struct pollfd clientFd;
-                    clientFd.fd = clientSocket;
-                    clientFd.events = POLLIN;
-                    fds.push_back(clientFd);
-				}
-                else
-                {
-                    // partie a bien revoir en detail
-                    char buffer[1024];
-                    memset(buffer, 0, sizeof(buffer));
-                    size_t msgRead = recv(fds[i].fd, buffer, sizeof(buffer - 1), 0);
-					// Client existant parle
-
-                    if (msgRead <= 0) {
-                        std::cout << "Client " << fds[i].fd << " disconnected" << std::endl;
-                        close(fds[i].fd);
-                        fds.erase(fds.begin() + i);
-                        --i;
-                    }
-                    else
-                    {
-                        std::cout << "Message from client " << fds[i].fd << ": " << buffer << std::endl;
-                        // la suite prochainement
-                    }
-                }
-			}
-		}
-	}
-
 }

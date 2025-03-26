@@ -20,6 +20,8 @@ public:
 
 	// accept et recv
     void start(); // test simple : afficher que le serveur écoute
+	//
+	void pollLoop();
 };
 
 #endif
