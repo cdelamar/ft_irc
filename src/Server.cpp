@@ -79,61 +79,74 @@ void Server::initSocket()
         throw ServerException("Error: listen() has failed");
 }
 
+// AJOUTER DES CLIENTS AU SERVUER //
 
-// pour plus de clarte sur cette fonction, voir 'start_example.cpp'
-void Server::start()
+void Server::acceptNewClient(std::vector<struct pollfd> &fds)
 {
-	std::cout << "Server is listening on port " << _port << std::endl;
+	sockaddr_in clientAddr;
+	socklen_t clientLen = sizeof(clientAddr);
+	int clientSocket = accept(_servSocket, (sockaddr*)&clientAddr, &clientLen);
 
-    sockaddr_in clientAddr;
-    socklen_t clientLen = sizeof(clientAddr);
-    int clientSocket;
-    ssize_t bytesRead;
+	if (clientSocket < 0)
+	{
+		std::cerr << "accept() failed (non bloquant, peut arriver) fd: " << _servSocket << std::endl;
+		return;
+	}
 
-    std::cout << "Waiting for a client..." << std::endl;
+	std::cout << "Client connecté ! (fd: " << clientSocket << ")" << std::endl;
 
-    //accept() : le vigile a la porte d'entree
+	struct pollfd clientFd;
+	clientFd.fd = clientSocket;
+	clientFd.events = POLLIN;
+	fds.push_back(clientFd);
 
-    // int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
-    // sockfd   : Ton socket serveur (celui qui a été bind() et listen()é)
-    // addr     : Pointeur vers une structure qui recevra l’adresse du client
-    // addrlen	: Taille de la structure (en entrée) et mise à jour (en sortie)
-    clientSocket = accept(_servSocket, (sockaddr*)&clientAddr, &clientLen);
-    if (clientSocket < 0)
-        throw ServerException("Error : accept() has failed");
-
-    std::cout << "Client connected !" << std::endl;
-
-    char buffer[1024]; // par convention, car une ligne IRC (specialisation RFC) est de 512caracteres maxi
-    std::memset(buffer, 0, sizeof(buffer)); // on nettoie le Ko au cas ou
-
-    // recv() : comme read() pour les fichiers, recv() lis les data d'un socket TCP
-
-    // ssize_t recv(int socket, void *buffer, size_t length, int flags);
-    // socket	Le fd du socket client sur lequel tu attends des données
-    // buffer	La zone mémoire où seront stockées les données reçues
-    // length	La taille maximale que tu acceptes de recevoir
-    // flags	Options (0 ici = comportement par défaut)
-    bytesRead = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
-
-    /// ESSENTIEL ///
-    //             //
-    // accept et recv sont BLOQUANT
-    // c'est a dire que le serveur
-    // restera fige tant qu'un client
-    // ne se co pas (accept) ou n'envoie pas son msg (recv)
-
-
-    if (bytesRead < 0)
-        throw ServerException("Erreur: recv() a échoué");
-
-    std::cout << "Message reçu du client : " << buffer << std::endl;
-
-    close(clientSocket);
-    std::cout << "Connexion client fermée." << std::endl;
+	_clients.insert(std::make_pair(clientSocket, Client(clientSocket)));
 }
 
-void Server::pollLoop() {
+// SUPPRIMER DES CLIENT DU SERVEUR //
+
+void Server::removeClient(std::vector<struct pollfd> &fds, size_t i)
+{
+	close(fds[i].fd);
+	_clients.erase(fds[i].fd);
+	fds.erase(fds.begin() + i);
+	--i;
+}
+
+// GESTION DES MESSAGES ENVOYES PAR LES CLIENTS //
+
+void Server::handleClientMessage(std::vector<struct pollfd> &fds, size_t i)
+{
+	char buffer[1024];
+	std::memset(buffer, 0, sizeof(buffer));
+	ssize_t msgRead = recv(fds[i].fd, buffer, sizeof(buffer) - 1, 0);
+
+	if (msgRead <= 0)
+	{
+		std::cout << "Client " << fds[i].fd << " disconnected" << std::endl;
+		removeClient(fds, i);
+        --i; // pour retirer un index dans le vector
+		return;
+	}
+    //std::cout << "Message from client " << fds[i].fd << ": " << buffer << std::endl;
+     // ajoute les data recu direct dans le buffer
+	_clients[fds[i].fd].appendToBuffer(std::string(buffer, msgRead));
+
+	while (_clients[fds[i].fd].hasCompleteCommand())
+	{
+		std::string cmd = _clients[fds[i].fd].extractCommand();
+		std::cout << "Commande complète du client " << fds[i].fd << " : " << cmd << std::endl;
+
+		// TODO : future handleCommand(cmd)
+	}
+}
+
+// BOUCLE DU SERVEUR //
+
+void Server::pollLoop()
+{
+	std::vector<struct pollfd> fds;
+	struct pollfd servFd;
 
     /* cette struct est inherente a <poll.h>, je n'invente rien ici
         je repompe juste le MAN
@@ -145,82 +158,25 @@ void Server::pollLoop() {
         };
     */
 
-	std::vector<struct pollfd> fds;
-
-	struct pollfd servFd;
 	servFd.fd = _servSocket;
 	servFd.events = POLLIN;
 	fds.push_back(servFd);
 
 	while (true)
-    {
+	{
 		int ready = poll(&fds[0], fds.size(), -1);
-		if (ready < 0) throw ServerException("poll() failed");
+		if (ready < 0)
+			throw ServerException("poll() failed");
 
 		for (size_t i = 0; i < fds.size(); ++i)
-        {
+		{
 			if (fds[i].revents & POLLIN)
-            {
+			{
 				if (fds[i].fd == _servSocket)
-                {
-				    sockaddr_in clientAddr;
-                    socklen_t clientLen = sizeof(clientAddr);
-                    int clientSocket = accept(_servSocket, (sockaddr*)&clientAddr, &clientLen);
-
-                    if (clientSocket < 0)
-                    {
-                        std::cerr << "accept() failed (non bloquant, peut arriver) fd: " << _servSocket << std::endl;
-                        continue;
-                    }
-
-                    std::cout << "Client connecté ! (fd: " << clientSocket << ")" << std::endl;
-
-                    struct pollfd clientFd;
-                    clientFd.fd = clientSocket;
-                    clientFd.events = POLLIN;
-                    fds.push_back(clientFd);
-                    _clients.insert(std::make_pair(clientSocket, Client(clientSocket))); // le client garde pour lui le buffer lie au fd
-				}
-                else
-                {
-                    // partie a bien revoir en detail
-                    char buffer[1024];
-                    memset(buffer, 0, sizeof(buffer));
-                    size_t msgRead = recv(fds[i].fd, buffer, sizeof(buffer - 1), 0);
-					// Client existant parle
-
-                    if (msgRead <= 0) {
-                        std::cout << "Client " << fds[i].fd << " disconnected" << std::endl;
-                        //fermeture du socket
-                        close(fds[i].fd);
-
-                        //suppression de l'entree du vecteur pollfd
-                        fds.erase(fds.begin() + i);
-
-                        //suppression du client dans la map
-                        _clients.erase(fds[i].fd);
-
-                        //on perd une place dans le vecteur donc on decremente l'indice, sinon BUG
-                        --i;
-                    }
-                    else
-                    {
-                        //std::cout << "Message from client " << fds[i].fd << ": " << buffer << std::endl;
-                        // ajoute les data recu direct dans le buffer
-                        _clients[fds[i].fd].appendToBuffer(std::string(buffer, msgRead));
-
-                        //tant que j'ai une commande complete >> extraction
-                        while (_clients[fds[i].fd].hasCompleteCommand())
-                        {
-                                std::string cmd = _clients[fds[i].fd].extractCommand();
-                                std::cout << "Commande complète du client " << fds[i].fd << " : " << cmd << std::endl;
-
-                                // parsing prochainement
-                        }
-                    }
-                }
+					acceptNewClient(fds);
+				else
+					handleClientMessage(fds, i);
 			}
 		}
 	}
-
 }
