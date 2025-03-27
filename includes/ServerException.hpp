@@ -4,6 +4,8 @@
 #include <stdexcept>
 #include <string>
 
+//coplien pour les exceptions ?
+
 class ServerException : public std::exception
 {
 public:

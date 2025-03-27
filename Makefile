@@ -6,6 +6,7 @@ CXXFLAGS	= -Wall -Wextra -Werror -std=c++98 -Weffc++ -Iincludes
 SRCS		= src/main.cpp \
 			  src/Server.cpp \
 			  src/ServerException.cpp \
+			  src/Client.cpp
 
 OBJS		= $(SRCS:.cpp=.o)
 

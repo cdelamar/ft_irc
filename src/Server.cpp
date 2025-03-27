@@ -12,13 +12,13 @@
 #include <netinet/in.h> // pour sockaddr_in, htons()
 
 Server::Server(int port, const std::string &password)
-    : _servSocket(-1), _port(port), _password(password)
+    : _servSocket(-1), _port(port), _password(password) ,_clients()
 {
     initSocket();
 }
 
 Server::Server(const Server &other)
-    : _servSocket(other._servSocket), _port(other._port), _password(other._password)
+    : _servSocket(other._servSocket), _port(other._port), _password(other._password), _clients(other._clients)
 {
 }
 
@@ -179,6 +179,7 @@ void Server::pollLoop() {
                     clientFd.fd = clientSocket;
                     clientFd.events = POLLIN;
                     fds.push_back(clientFd);
+                    _clients.insert(std::make_pair(clientSocket, Client(clientSocket))); // le client garde pour lui le buffer lie au fd
 				}
                 else
                 {
@@ -190,14 +191,32 @@ void Server::pollLoop() {
 
                     if (msgRead <= 0) {
                         std::cout << "Client " << fds[i].fd << " disconnected" << std::endl;
+                        //fermeture du socket
                         close(fds[i].fd);
+
+                        //suppression de l'entree du vecteur pollfd
                         fds.erase(fds.begin() + i);
+
+                        //suppression du client dans la map
+                        _clients.erase(fds[i].fd);
+
+                        //on perd une place dans le vecteur donc on decremente l'indice, sinon BUG
                         --i;
                     }
                     else
                     {
-                        std::cout << "Message from client " << fds[i].fd << ": " << buffer << std::endl;
-                        // la suite prochainement
+                        //std::cout << "Message from client " << fds[i].fd << ": " << buffer << std::endl;
+                        // ajoute les data recu direct dans le buffer
+                        _clients[fds[i].fd].appendToBuffer(std::string(buffer, msgRead));
+
+                        //tant que j'ai une commande complete >> extraction
+                        while (_clients[fds[i].fd].hasCompleteCommand())
+                        {
+                                std::string cmd = _clients[fds[i].fd].extractCommand();
+                                std::cout << "Commande complète du client " << fds[i].fd << " : " << cmd << std::endl;
+
+                                // parsing prochainement
+                        }
                     }
                 }
 			}
