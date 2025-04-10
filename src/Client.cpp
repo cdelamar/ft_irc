@@ -1,11 +1,15 @@
 #include "Client.hpp"
 
-Client::Client() : _fd(-1), _msgBuffer("") {}
+Client::Client()
+    : _fd(-1), _msgBuffer(""), _nickname("") {}
 
-Client::Client(int fd) : _fd(fd), _msgBuffer("") {}
+Client::Client(int fd)
+    : _fd(fd), _msgBuffer(""), _nickname("") {}
 
-Client::Client(const Client &src) : _fd(src._fd), _msgBuffer(src._msgBuffer) {}
+Client::Client(const Client &src)
+    : _fd(src._fd), _msgBuffer(src._msgBuffer), _nickname(src._nickname) {}
 
+Client::~Client() {}
 Client &Client::operator=(const Client &src)
 {
     if (this != &src)
@@ -16,7 +20,9 @@ Client &Client::operator=(const Client &src)
     return *this;
 }
 
-Client::~Client() {}
+
+void Client::setNickname(const std::string &nick) { _nickname = nick; }
+const std::string &Client::getNickname() const { return _nickname; }
 
 int Client::getFd() const
 {

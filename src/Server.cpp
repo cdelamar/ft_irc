@@ -1,15 +1,5 @@
 #include "Server.hpp"
 #include "ServerException.hpp"
-#include <cstring>
-#include <arpa/inet.h>
-#include <poll.h>       // pour struct pollfd et poll()
-#include <vector>       // pour std::vector
-#include <cstring>      // pour memset()
-#include <unistd.h>     // pour close()
-#include <fcntl.h>      // pour fcntl()
-#include <iostream>     // pour les logs/debug
-#include <sys/socket.h> // pour socket(), bind(), accept(), recv()
-#include <netinet/in.h> // pour sockaddr_in, htons()
 
 Server::Server(int port, const std::string &password)
     : _servSocket(-1), _port(port), _password(password) ,_clients()
@@ -43,6 +33,7 @@ void Server::initSocket()
 {
 	// fais office de 'prise reseau' pour se connecter a internet
 	_servSocket = socket(AF_INET, SOCK_STREAM, 0); // ouvre un socket (TCP) sur le port standard  IRC qui est 6667
+
 	// comment marche socket ici
     // AF_NET : reseau ipv4
     // SOCK_STREAM : protocole TCP
@@ -54,13 +45,11 @@ void Server::initSocket()
     // fonction qui permet de gerer des FD
     // ici, fcntl() nous permet de config notre socket en 'non-bloquant'
     // F_SETFL pour "Set File status Flags" - pour modifier le comportement du fd
-    // O_NONBLOCK - permet de rendre accept et recv () non bloquant (cf ESSENTIEL plus bas)
-
-
+    // O_NONBLOCK - permet de rendre accept et recv () non bloquant (cf ESSENTIEL plus bas
     if (fcntl(_servSocket, F_SETFL, O_NONBLOCK) < 0)
        throw ServerException("Error: fcntl() failed to set non-blocking mode");
-
     int opt = 1;
+
     // sans ce if(), le code est a la merci de TIME_WAIT
     // TIME_WAIT, c'est un etat TCP imposer par le kernel
     if (setsockopt(_servSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
@@ -134,10 +123,12 @@ void Server::handleClientMessage(std::vector<struct pollfd> &fds, size_t i)
 
 	while (_clients[fds[i].fd].hasCompleteCommand())
 	{
-		std::string cmd = _clients[fds[i].fd].extractCommand();
-		std::cout << "Commande complète du client " << fds[i].fd << " : " << cmd << std::endl;
+		std::string cmdStr = _clients[fds[i].fd].extractCommand();
+		Command parsed = parseCommand(cmdStr);
 
-		// TODO : future handleCommand(cmd)
+		std::cout << "[DEBUG] Parsed command: " << parsed.name << " (" << parsed.raw << ")" << std::endl;
+
+		handleCommand(fds[i].fd, parsed); // appel du dispatcher
 	}
 }
 
@@ -179,4 +170,52 @@ void Server::pollLoop()
 			}
 		}
 	}
+}
+
+
+// PARSING
+
+Command Server::parseCommand(const std::string &rawCommand)
+{
+	// TODO : documenter cette fonction
+
+    Command cmd;
+    cmd.raw = rawCommand;
+
+    std::istringstream iss(rawCommand);
+    std::string word;
+
+    // Lire la commande
+    iss >> cmd.name;
+    std::transform(cmd.name.begin(), cmd.name.end(), cmd.name.begin(), ::toupper);
+
+    // Lire les param : gnl mais en C++
+    while (iss >> word)
+    {
+        if (word[0] == ':') {
+            std::string trailing = word.substr(1);
+            std::string rest;
+            std::getline(iss, rest);
+            cmd.params.push_back(trailing + rest);
+            break;
+        }
+        cmd.params.push_back(word);
+    }
+
+    return cmd;
+}
+
+// Dispatcher : partie importante qui changera souvent
+void Server::handleCommand(int clientFd, const Command &cmd)
+{
+	(void)clientFd;
+    if (cmd.name == "NICK")
+    {
+        std::cout << "[DEBUG] Handling NICK with param: " << (cmd.params.empty() ? "none" : cmd.params[0]) << std::endl;
+        // TODO : stocker dans le client
+    }
+    else
+    {
+        std::cout << "[INFO] Commande non implémentée : " << cmd.name << std::endl;
+    }
 }

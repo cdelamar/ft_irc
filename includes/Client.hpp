@@ -8,6 +8,7 @@ class Client
 private:
 	int _fd;
 	std::string _msgBuffer;
+    std::string _nickname;
 
 public:
     Client();
@@ -21,6 +22,10 @@ public:
     void appendToBuffer(const std::string &data);
     bool hasCompleteCommand() const;
     std::string extractCommand();
+
+    // getter setter nickname
+    void setNickname(const std::string &nick);
+    const std::string &getNickname() const;
 };
 
 #endif
