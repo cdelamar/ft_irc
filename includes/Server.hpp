@@ -52,6 +52,10 @@ public:
 	Command parseCommand(const std::string &rawCommand);
 	void handleCommand(int clientFd, const Command &cmd);
 	//void handleCommand(int clientFd, const std::string &rawcommand);
+
+	Client &getClient(int fd);
+	bool isNicknameTaken(const std::string &nickname);
+
 };
 
 #endif

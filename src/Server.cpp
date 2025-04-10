@@ -1,5 +1,6 @@
 #include "Server.hpp"
 #include "ServerException.hpp"
+#include "CommandHandler.hpp"
 
 Server::Server(int port, const std::string &password)
     : _servSocket(-1), _port(port), _password(password) ,_clients()
@@ -149,6 +150,30 @@ void Server::pollLoop()
         };
     */
 
+    /*
+    ┌──────────────────────────── pollLoop() : coeur du serveur ──────────────────────────────┐
+    │                                                                                        │
+    │  Structure de données utilisée :                                                       │
+    │                                                                                        │
+    │  +------------------------+      +------------------------------+                      │
+    │  | vector<pollfd> fds     |      | map<int, Client> _clients     |                     │
+    │  | (pour poll())          |      | (données logiques)           |                      │
+    │  +------------------------+      +------------------------------+                      │
+    │  |                        |      |                              |                      │
+    │  | [0] fd = 3             |----->| Clé : 3                      |                      │
+    │  |     events = POLLIN    |      | Valeur : Client              |                      │
+    │  |                        |      |   fd        = 3              |                      │
+    │  | [1] fd = 4             |----->| Clé : 4                      |                      │
+    │  |     events = POLLIN    |      | Valeur : Client              |                      │
+    │  +------------------------+      |   nickname  = "Johnn"        |                      │
+    │                                 +------------------------------+                       │
+    │                                                                                        │
+    │  Le file descriptor (fd) est la clé commune entre le réseau (poll) et le client        │
+    │                                                                                        │
+    └────────────────────────────────────────────────────────────────────────────────────────┘
+    */
+
+
 	servFd.fd = _servSocket;
 	servFd.events = POLLIN;
 	fds.push_back(servFd);
@@ -210,12 +235,28 @@ void Server::handleCommand(int clientFd, const Command &cmd)
 {
 	(void)clientFd;
     if (cmd.name == "NICK")
-    {
-        std::cout << "[DEBUG] Handling NICK with param: " << (cmd.params.empty() ? "none" : cmd.params[0]) << std::endl;
-        // TODO : stocker dans le client
-    }
+        handleNick(*this, clientFd, cmd);
     else
     {
         std::cout << "[INFO] Commande non implémentée : " << cmd.name << std::endl;
     }
+}
+
+Client &Server::getClient(int fd)
+{
+    return _clients[fd];
+}
+
+bool Server::isNicknameTaken(const std::string &nickname)
+{
+    std::map<int, Client>::const_iterator i;
+    i = _clients.begin();
+
+    while (i != _clients.end())
+    {
+        if (i->second.getNickname() == nickname)
+            return true;
+        i++;
+    }
+    return false;
 }
