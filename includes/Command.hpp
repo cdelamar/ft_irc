@@ -1,6 +1,9 @@
 #ifndef COMMAND_HPP
 #define COMMAND_HPP
 
+// TODO : voir si je peux pas decaler ca autre part,
+// sinon le documenter pour expliquer comment ca marche
+
 #include <string>
 #include <vector>
 

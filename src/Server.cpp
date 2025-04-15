@@ -173,6 +173,33 @@ void Server::pollLoop()
     └────────────────────────────────────────────────────────────────────────────────────────┘
     */
 
+    /*
+    ╔═══════════════════════╤════════════════════════════════════════════════════════╗
+    ║      Données IRC      │         Chemin des données vers ton programme         ║
+    ╟───────────────────────┼────────────────────────────────────────────────────────╢
+    ║ CLIENT IRC (ex: irssi)│ Tape une commande : "PRIVMSG #chan :Salut\r\n"        ║
+    ╟───────────────────────┼────────────────────────────────────────────────────────╢
+    ║ Réseau (TCP/IP)       │ Le message est découpé en paquets TCP,                ║
+    ║                       │ limité par la **fenêtre TCP** (gérée par l'OS)        ║
+    ╟───────────────────────┼────────────────────────────────────────────────────────╢
+    ║ Buffer TCP (kernel)   │ Les paquets valides arrivent dans le buffer réseau    ║
+    ║                       │ du **système** (pile TCP Linux)                       ║
+    ╟───────────────────────┼────────────────────────────────────────────────────────╢
+    ║ recv() (ton code)     │ Tu récupères les octets disponibles avec `recv()`     ║
+    ╟───────────────────────┼────────────────────────────────────────────────────────╢
+    ║ _msgBuffer (toi)      │ Tu stockes les octets reçus, et tu détectes           ║
+    ║                       │ **si une commande IRC est complète** (via \r\n)       ║
+    ╟───────────────────────┼────────────────────────────────────────────────────────╢
+    ║ extractCommand()      │ Une fois \r\n détecté, tu extrais la commande         ║
+    ║                       │ pour la parser et la traiter                          ║
+    ╚═══════════════════════╧════════════════════════════════════════════════════════╝
+
+    🧠 Résumé : Tu ne contrôles ni la taille, ni la vitesse, ni l’ordre de réception.
+    Ton `_msgBuffer` est là pour garantir que tu traites les messages IRC **correctement**, même
+    s’ils arrivent coupés, en vrac, ou fusionnés dans le même `recv()`.
+    */
+
+
 
 	servFd.fd = _servSocket;
 	servFd.events = POLLIN;
@@ -230,18 +257,6 @@ Command Server::parseCommand(const std::string &rawCommand)
     return cmd;
 }
 
-// Dispatcher : partie importante qui changera souvent
-void Server::handleCommand(int clientFd, const Command &cmd)
-{
-	(void)clientFd;
-    if (cmd.name == "NICK")
-        handleNick(*this, clientFd, cmd);
-    else
-    {
-        std::cout << "[INFO] Commande non implémentée : " << cmd.name << std::endl;
-    }
-}
-
 Client &Server::getClient(int fd)
 {
     return _clients[fd];
@@ -259,4 +274,16 @@ bool Server::isNicknameTaken(const std::string &nickname)
         i++;
     }
     return false;
+}
+
+const std::string &Server::getPassword() const { return _password; }
+
+void Server::sendToClient(int fd, const std::string &msg)
+{
+    //fonction toute bete pour envoyer une info au client
+    std::string finalMsg = msg + "\r\n";
+
+    ssize_t toSend = send(fd, finalMsg.c_str(), finalMsg.size(), 0);
+    if (toSend < 0)
+        std::cerr << "[ERROR] can't send message to client" << std::endl;
 }

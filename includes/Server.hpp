@@ -56,6 +56,9 @@ public:
 	Client &getClient(int fd);
 	bool isNicknameTaken(const std::string &nickname);
 
+	const std::string &getPassword() const;
+
+	void sendToClient(int fd, const std::string &msg);
 };
 
 #endif
