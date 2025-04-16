@@ -4,6 +4,7 @@
 #include "Command.hpp"
 #include "Client.hpp"
 #include <iostream>
+#include "utils.hpp"
 
 // TODO
 
@@ -44,27 +45,89 @@
     USER : informations utilisateur
 */
 
+
+/*
 void handleNick(Server &server, int clientFd, const Command &cmd)
 {
     Client &client = server.getClient(clientFd);
 
-    if (cmd.params.empty()) {
+    if (client.isRegistered())
+    {
+        server.sendToClient(clientFd, ERR_ALREADYREGISTRED + std::string(" :Unauthorized command (already registered)"));
+        return;
+    }
+
+    if (cmd.params.size() != 1)
+    {
         server.sendToClient(clientFd, ERR_NONICKNAMEGIVEN + std::string(" NICK :No nickname given"));
         return;
     }
 
     const std::string &newNick = cmd.params[0];
+    // (TODO : un validateur de nickname pour retourner 432 si besoin OK
+    if (!isValidNickname(newNick))
+    {
+        std::string errMsg = ":" + server.getHostname() + " " + ERR_ERRONEUSNICKNAME + " * " + newNick + " :Erroneous nickname";
+        server.sendToClient(clientFd, errMsg);
+        return;
+    }
 
-    // (TODO : un validateur de nickname pour retourner 432 si besoin
-
-    if (server.isNicknameTaken(newNick)) {
-        server.sendToClient(clientFd, ERR_NICKNAMEINUSE + std::string(" " + newNick + " :Nickname is already in use"));
+    if (server.isNicknameTaken(newNick))
+    {
+        std::string errMsg = ":" + server.getHostname() + " " + ERR_NICKNAMEINUSE + " * " + newNick + " :Nickname is already in use";
+        server.sendToClient(clientFd, errMsg);
         return;
     }
 
     client.setNickname(newNick);
     std::cout << "[INFO] Client fd " << clientFd << " → Nickname set to '" << newNick << "'" << std::endl;
+}*/
+
+void handleNick(Server &server, int clientFd, const Command &cmd)
+{
+    Client &client = server.getClient(clientFd);
+
+    // Erreur : pas de paramètre
+    if (cmd.params.empty())
+    {
+        server.sendToClient(clientFd, ":" + server.getHostname() + " " + ERR_NONICKNAMEGIVEN + " * :No nickname given");
+        return;
+    }
+
+    const std::string &newNick = cmd.params[0];
+
+    // Erreur : nickname invalide selon la RFC
+    if (!isValidNickname(newNick))
+    {
+        server.sendToClient(clientFd, ":" + server.getHostname() + " " + ERR_ERRONEUSNICKNAME + " * " + newNick + " :Erroneous nickname");
+        return;
+    }
+
+    // Erreur : nickname déjà pris
+    if (server.isNicknameTaken(newNick))
+    {
+        server.sendToClient(clientFd, ":" + server.getHostname() + " " + ERR_NICKNAMEINUSE + " * " + newNick + " :Nickname is already in use");
+        return;
+    }
+
+    // Si le client est déjà enregistré et essaie de changer de nick → autorisé par le RFC, mais tu peux aussi le bloquer si tu veux
+    if (client.isRegistered())
+    {
+        client.setNickname(newNick);
+        server.sendToClient(clientFd, ":" + server.getHostname() + " NICK :" + newNick);
+        return;
+    }
+
+    // Enregistrement normal du nick
+    client.setNickname(newNick);
+    std::cout << "[INFO] Client fd " << clientFd << " → Nickname set to '" << newNick << "'" << std::endl;
+
+    // Vérifier si on peut marquer le client comme "inscrit" maintenant
+    client.checkRegistered();
+    if (client.isRegistered())
+        std::cout << "[INFO] Client " << clientFd << " is now registered (NICK + USER done)" << std::endl;
 }
+
 
 void handleUser(Server &server, int clientFd, const Command &cmd)
 {
@@ -149,12 +212,19 @@ void handlePass(Server &server, int clientFd, const Command &cmd)
     server.sendToClient(clientFd, "NOTICE AUTH :Password accepted");
 }
 
+/*
 
+/connect 127.0.0.1 6667 mdp
+
+*/
 
 // Dispatcher : partie importante qui changera souvent
 void Server::handleCommand(int clientFd, const Command &cmd)
 {
 	(void)clientFd;
+
+    if (cmd.name.empty())
+        return;
 
     // Bloquer toute commande tant que le pass n'est pas valide
     if (!getClient(clientFd).isPassSaved() && cmd.name != "PASS")

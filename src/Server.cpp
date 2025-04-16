@@ -287,3 +287,9 @@ void Server::sendToClient(int fd, const std::string &msg)
     if (toSend < 0)
         std::cerr << "[ERROR] can't send message to client" << std::endl;
 }
+
+const std::string &Server::getHostname() const
+{
+    static const std::string hostname = "ircserv"; // ou gethostname() réel si besoin
+    return hostname;
+}

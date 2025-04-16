@@ -59,6 +59,8 @@ public:
 	const std::string &getPassword() const;
 
 	void sendToClient(int fd, const std::string &msg);
+
+	const std::string &getHostname() const;
 };
 
 #endif

@@ -8,6 +8,7 @@ SRCS		= src/main.cpp \
 			  src/ServerException.cpp \
 			  src/Client.cpp \
 			  src/CommandHandler.cpp \
+			  src/utils.cpp \
 
 OBJS		= $(SRCS:.cpp=.o)
 
