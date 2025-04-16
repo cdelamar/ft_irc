@@ -262,6 +262,21 @@ Client &Server::getClient(int fd)
     return _clients[fd];
 }
 
+bool Server::isNicknameTaken(const std::string &nickname, int excludeFd)
+{
+    std::map<int, Client>::const_iterator it = _clients.begin();
+
+    while (it != _clients.end())
+    {
+        if (it->first != excludeFd && it->second.getNickname() == nickname)
+            return true;
+
+        ++it;
+    }
+    return false;
+}
+
+/*
 bool Server::isNicknameTaken(const std::string &nickname)
 {
     std::map<int, Client>::const_iterator i;
@@ -274,7 +289,7 @@ bool Server::isNicknameTaken(const std::string &nickname)
         i++;
     }
     return false;
-}
+}*/
 
 const std::string &Server::getPassword() const { return _password; }
 

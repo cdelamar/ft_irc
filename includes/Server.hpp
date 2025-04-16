@@ -54,7 +54,9 @@ public:
 	//void handleCommand(int clientFd, const std::string &rawcommand);
 
 	Client &getClient(int fd);
-	bool isNicknameTaken(const std::string &nickname);
+	// bool isNicknameTaken(const std::string &nickname);
+	bool isNicknameTaken(const std::string &nickname, int excludeFd);;
+
 
 	const std::string &getPassword() const;
 
