@@ -45,7 +45,6 @@
     USER : informations utilisateur
 */
 
-/*
 void handleNick(Server &server, int clientFd, const Command &cmd)
 {
     Client &client = server.getClient(clientFd);
@@ -53,53 +52,7 @@ void handleNick(Server &server, int clientFd, const Command &cmd)
     // RFC 2812 §3.1 - Si déjà enregistré, NICK interdit
     if (client.isRegistered())
     {
-        server.sendToClient(clientFd, ERR_ALREADYREGISTRED + std::string(" :Unauthorized command (already registered)"));
-        return;
-    }
-
-    // Pas de param -> 431
-    if (cmd.params.size() != 1)
-    {
-        server.sendToClient(clientFd, ERR_NONICKNAMEGIVEN + std::string(" NICK :No nickname given"));
-        return;
-    }
-
-    const std::string &newNick = cmd.params[0];
-
-    // Déjà utilisé par ce client → silencieux
-    if (client.getNickname() == newNick)
-        return;
-
-    // Nickname non valide → erreur 432
-    if (!isValidNickname(newNick))
-    {
-        server.sendToClient(clientFd, ERR_ERRONEUSNICKNAME + std::string(" " + newNick + " :Erroneous nickname"));
-        return;
-    }
-
-    // Nickname déjà pris par un autre → erreur 433
-    if (server.isNicknameTaken(newNick) && client.getNickname() != newNick)
-    {
-        server.sendToClient(clientFd,
-            ":" + server.getHostname() + " " + ERR_NICKNAMEINUSE + " * " + newNick + " :Nickname is already in use");
-        return;
-    }
-
-    // Tout est bon → on set
-    client.setNickname(newNick);
-    std::cout << "[INFO] Client fd " << clientFd << " → Nickname set to '" << newNick << "'" << std::endl;
-}
-*/
-
-
-void handleNick(Server &server, int clientFd, const Command &cmd)
-{
-    Client &client = server.getClient(clientFd);
-
-    // RFC 2812 §3.1 - Si déjà enregistré, NICK interdit
-    if (client.isRegistered())
-    {
-        server.sendToClient(clientFd, ERR_ALREADYREGISTRED + std::string(" :Unauthorized command (already registered)"));
+        server.sendToClient(clientFd, ERR_ALREADYREGISTRED + std::string(" :unhautorized nicknam (already registered)"));
         return;
     }
 
