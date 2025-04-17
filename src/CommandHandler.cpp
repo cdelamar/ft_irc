@@ -173,10 +173,119 @@ void handlePass(Server &server, int clientFd, const Command &cmd)
 }
 
 /*
+void handleJoin(Server &server, int clientFd, const Command &cmd)
+{
+    //bcp de parsing : nom deja pris, bon argument, si le client est pas deja membre...
+    if (cmd.params.empty())
+    {
+        server.sendToClient(clientFd,
+            std::string(ERR_NEEDMOREPARAMS) + " JOIN :Not enough parameters");
+        return;
+    }
 
-/connect 127.0.0.1 6667 mdp
+    const std::string &chanName = cmd.params[0];
+    Client &client = server.getClient(clientFd);
 
-*/
+    if (!server.channelExists(chanName))
+        server.createChannel(chanName);
+
+    Channel &chan = server.getChannel(chanName);
+
+    if (!chan.isMember(clientFd))
+    {
+        chan.addMember(client);
+
+        // TODO :
+        //    mettre le premier client connecte en tant que modo
+        //    et envoyer topic + liste de membres
+
+        // Notifier le client qu'il a rejoint
+        std::string prefix = ":" + client.getNickname()
+            + "!" + client.getUsername()
+            + "@" + server.getHostname();
+        server.sendToClient(clientFd, prefix + " JOIN " + chanName);
+    }
+}*/
+
+
+
+
+// --- Implementation des petits helpers ---
+
+static void sendJoinNotification(Server &server, Channel &chan, Client &client)
+{
+    std::string me = client.getNickname()
+                   + "!" + client.getUsername()
+                   + "@" + server.getHostname();
+    server.sendToClient(client.getFd(),
+        ":" + me + " JOIN " + chan.getName());
+}
+
+static void sendTopicReply(Server &server, Channel &chan, Client &client)
+{
+    const std::string &topic = chan.getTopic();
+    std::string code = topic.empty() ? "331" : "332";
+    std::string msg  = server.getHostname() + " " + code + " "
+                     + client.getNickname() + " "
+                     + chan.getName() + " :"
+                     + (topic.empty() ? "No topic is set" : topic);
+    server.sendToClient(client.getFd(), msg);
+}
+
+static void sendNamesReply(Server &server, Channel &chan, Client &client)
+{
+    // 353 names
+    std::vector<int> fds = chan.getMemberFds();
+    std::string names;
+    for (size_t i = 0; i < fds.size(); ++i)
+    {
+        names += server.getClient(fds[i]).getNickname();
+        if (i + 1 < fds.size()) names += " ";
+    }
+    server.sendToClient(client.getFd(),
+        server.getHostname() + " 353 "
+        + client.getNickname() + " = "
+        + chan.getName() + " :" + names);
+
+    // 366 end of names
+    server.sendToClient(client.getFd(),
+        server.getHostname() + " 366 "
+        + client.getNickname() + " "
+        + chan.getName() + " :End of /NAMES list");
+}
+
+void handleJoin(Server &server, int clientFd, const Command &cmd)
+{
+    // 1) Paramètre
+    if (cmd.params.empty())
+    {
+        server.sendToClient(clientFd,
+            std::string(ERR_NEEDMOREPARAMS) + " JOIN :Not enough parameters");
+        return;
+    }
+    const std::string &chanName = cmd.params[0];
+    Client &client = server.getClient(clientFd);
+
+    // 2) Création du salon si besoin
+    if (!server.channelExists(chanName))
+        server.createChannel(chanName);
+    Channel &chan = server.getChannel(chanName);
+
+    // 3) Ajout du client
+    if (!chan.isMember(clientFd))
+    {
+        chan.addMember(client);
+
+        // 4) Auto‑promotion du premier membre
+        if (chan.memberCount() == 1)
+            chan.promoteToOperator(clientFd);
+
+        // 5) Enchaînement des notifications
+        sendJoinNotification(server, chan, client);
+        sendTopicReply(server, chan, client);
+        sendNamesReply(server, chan, client);
+    }
+}
 
 // Dispatcher : partie importante qui changera souvent
 void Server::handleCommand(int clientFd, const Command &cmd)
@@ -200,6 +309,8 @@ void Server::handleCommand(int clientFd, const Command &cmd)
         handleNick(*this, clientFd, cmd);
     else if (cmd.name == "USER")
         handleUser(*this, clientFd, cmd);
+    else if (cmd.name == "JOIN")
+        handleJoin(*this, clientFd, cmd);
     else
     {
         std::cout << "[INFO] Commande non implémentée : " << cmd.name << std::endl;

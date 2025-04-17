@@ -1,12 +1,13 @@
 NAME		= ircserv
 
 CXX			= c++
-CXXFLAGS	= -Wall -Wextra -Werror -std=c++98 -Weffc++ -Iincludes
+CXXFLAGS	= -Wall -Wextra -Werror -std=c++98 -Iincludes -pedantic-errors -Wno-c++98-compat-pedantic -Wno-padded
 
 SRCS		= src/main.cpp \
 			  src/Server.cpp \
 			  src/ServerException.cpp \
 			  src/Client.cpp \
+			  src/Channel.cpp \
 			  src/CommandHandler.cpp \
 			  src/utils.cpp \
 

@@ -1,6 +1,7 @@
 #include "Server.hpp"
 #include "ServerException.hpp"
 #include "CommandHandler.hpp"
+#include "Channel.hpp"
 
 Server::Server(int port, const std::string &password)
     : _servSocket(-1), _port(port), _password(password) ,_clients()
@@ -60,9 +61,9 @@ void Server::initSocket()
     std::memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = INADDR_ANY;
-    addr.sin_port = htons(_port);
+    addr.sin_port = htons(static_cast<uint16_t>(_port));
 
-    if (bind(_servSocket, (sockaddr *)&addr, sizeof(addr)) < 0)
+    if (bind(_servSocket, reinterpret_cast<sockaddr *> (&addr), sizeof(addr)) < 0)
         throw ServerException("Error: bind() has failed");
 
     if (listen(_servSocket, 10) < 0)
@@ -75,7 +76,7 @@ void Server::acceptNewClient(std::vector<struct pollfd> &fds)
 {
 	sockaddr_in clientAddr;
 	socklen_t clientLen = sizeof(clientAddr);
-	int clientSocket = accept(_servSocket, (sockaddr*)&clientAddr, &clientLen);
+	int clientSocket = accept(_servSocket, reinterpret_cast<sockaddr *> (&clientAddr), &clientLen);
 
 	if (clientSocket < 0)
 	{
@@ -95,51 +96,71 @@ void Server::acceptNewClient(std::vector<struct pollfd> &fds)
 
 // SUPPRIMER DES CLIENT DU SERVEUR //
 
-void Server::removeClient(std::vector<struct pollfd> &fds, size_t i)
+/*void Server::removeClient(std::vector<struct pollfd> &fds, size_t i)
 {
 	close(fds[i].fd);
 	_clients.erase(fds[i].fd);
 	fds.erase(fds.begin() + i);
 	--i;
+}*/
+
+// Version JPL - MISRA-C++ - NASA
+
+void Server::removeClient(std::vector<struct pollfd> &fds, int fd)
+{
+    if (fd >= 0)
+    {
+        if (close(fd) < 0)
+            std::cerr << "[ERROR] close() failed for fd " << fd << std::endl;
+    }
+
+    _clients.erase(fd);
+
+    std::vector<struct pollfd>::iterator itFd = fds.begin();
+    while (itFd != fds.end())
+    {
+        if (itFd->fd == fd)
+        {
+            itFd = fds.erase(itFd);
+            break;
+        }
+        else
+            ++itFd;
+    }
 }
+
 
 // GESTION DES MESSAGES ENVOYES PAR LES CLIENTS //
 
-void Server::handleClientMessage(std::vector<struct pollfd> &fds, size_t i)
+void Server::handleClientMessage(std::vector<struct pollfd> &fds, int i)
 {
 	char buffer[1024];
 	std::memset(buffer, 0, sizeof(buffer));
-	ssize_t msgRead = recv(fds[i].fd, buffer, sizeof(buffer) - 1, 0);
+	ssize_t msgRead = recv(fds[static_cast<size_t>(i)].fd, buffer, sizeof(buffer) - 1, 0);
 
 	if (msgRead <= 0)
 	{
-		std::cout << "Client " << fds[i].fd << " disconnected" << std::endl;
-		removeClient(fds, i);
-        --i; // pour retirer un index dans le vector
+		std::cout << "Client " << fds[static_cast<size_t>(i)].fd << " disconnected" << std::endl;
+		removeClient(fds, fds[static_cast<size_t>(i)].fd);
+       // --i; // pour retirer un index dans le vector
 		return;
 	}
     //std::cout << "Message from client " << fds[i].fd << ": " << buffer << std::endl;
      // ajoute les data recu direct dans le buffer
-	_clients[fds[i].fd].appendToBuffer(std::string(buffer, msgRead));
+	_clients[fds[static_cast<size_t>(i)].fd].appendToBuffer(std::string(buffer, static_cast<size_t>(msgRead)));
 
-	while (_clients[fds[i].fd].hasCompleteCommand())
-	{
-		std::string cmdStr = _clients[fds[i].fd].extractCommand();
-		Command parsed = parseCommand(cmdStr);
+    while (_clients[fds[static_cast<size_t>(i)].fd].hasCompleteCommand())
+    {
+        std::string cmdStr = _clients[fds[static_cast<size_t>(i)].fd].extractCommand();
+        Command parsed = parseCommand(cmdStr);
 
-		std::cout << "[DEBUG] Parsed command: " << parsed.name << " (" << parsed.raw << ")" << std::endl;
+        std::cout << "[DEBUG] Parsed command: " << parsed.name << " (" << parsed.raw << ")" << std::endl;
 
-		handleCommand(fds[i].fd, parsed); // appel du dispatcher
-	}
+        handleCommand(fds[static_cast<size_t>(i)].fd, parsed);
+    }
 }
 
 // BOUCLE DU SERVEUR //
-
-void Server::pollLoop()
-{
-	std::vector<struct pollfd> fds;
-	struct pollfd servFd;
-
     /* cette struct est inherente a <poll.h>, je n'invente rien ici
         je repompe juste le MAN
 
@@ -200,14 +221,17 @@ void Server::pollLoop()
     */
 
 
-
+void Server::pollLoop()
+{
+	std::vector<struct pollfd> fds;
+	struct pollfd servFd;
 	servFd.fd = _servSocket;
 	servFd.events = POLLIN;
 	fds.push_back(servFd);
 
 	while (true)
 	{
-		int ready = poll(&fds[0], fds.size(), -1);
+		int ready = poll(&fds[0], static_cast<nfds_t>(fds.size()), -1);
 		if (ready < 0)
 			throw ServerException("poll() failed");
 
@@ -218,7 +242,7 @@ void Server::pollLoop()
 				if (fds[i].fd == _servSocket)
 					acceptNewClient(fds);
 				else
-					handleClientMessage(fds, i);
+					handleClientMessage(fds, static_cast<int>(i));
 			}
 		}
 	}
@@ -307,4 +331,22 @@ const std::string &Server::getHostname() const
 {
     static const std::string hostname = "ircserv"; // ou gethostname() réel si besoin
     return hostname;
+}
+
+bool Server::channelExists(const std::string &name) const
+{
+    return (_channels.find(name) != _channels.end());
+}
+
+Channel &Server::getChannel(const std::string &name)
+{
+    // .at() lève std::out_of_range si le salon n’existe pas : comportement clair
+    return _channels.at(name);
+}
+
+void Server::createChannel(const std::string &name)
+{
+    // n'insère que s'il n'existe pas déjà
+    if (!channelExists(name))
+        _channels.insert(std::make_pair(name, Channel(name)));
 }

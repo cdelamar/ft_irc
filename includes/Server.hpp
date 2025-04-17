@@ -20,22 +20,24 @@
 #include <netinet/in.h> // pour sockaddr_in, htons()
 #include <algorithm>	// pour std::transform
 #include "Command.hpp"
+#include "Channel.hpp"
 
 
 class Server
 {
 private:
-	int _servSocket;
-	int _port;
-	std::string _password;
-	std::map<int, Client> _clients;
+	int								_servSocket;
+	int								_port;
+	std::string						_password;
+	std::map<int, Client>			_clients;
+	std::map<std::string, Channel>	_channels;
 
 	void initSocket();
 
 	//inherente a 'pollLoop()'
 	void acceptNewClient(std::vector<struct pollfd> &fds);
-	void handleClientMessage(std::vector<struct pollfd> &fds, size_t i);
-	void removeClient(std::vector<struct pollfd> &fds, size_t i);
+	void handleClientMessage(std::vector<struct pollfd> &fds, int i);
+	void removeClient(std::vector<struct pollfd> &fds, int fd);
 
 	//inherente a 'handleCommand'
 	std::vector<std::string> tokenizeCommand(const std::string &command);
@@ -55,14 +57,18 @@ public:
 
 	Client &getClient(int fd);
 	// bool isNicknameTaken(const std::string &nickname);
-	bool isNicknameTaken(const std::string &nickname, int excludeFd);;
+	bool isNicknameTaken(const std::string &nickname, int excludeFd);
 
+
+	//channel
+	bool channelExists(const std::string &name) const;
+	Channel &getChannel(const std::string &name);
+	void createChannel(const std::string &name);
 
 	const std::string &getPassword() const;
+	const std::string &getHostname() const;
 
 	void sendToClient(int fd, const std::string &msg);
-
-	const std::string &getHostname() const;
 };
 
 #endif
