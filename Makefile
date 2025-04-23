@@ -1,19 +1,32 @@
-NAME		= ircserv
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
 
-CXX			= c++
-CXXFLAGS	= -Wall -Wextra -Werror -std=c++98 -Iincludes -pedantic-errors -Wno-c++98-compat-pedantic -Wno-padded
+NAME        = ircserv
 
-SRCS		= src/main.cpp \
-			  src/Server.cpp \
-			  src/ServerException.cpp \
-			  src/Client.cpp \
-			  src/Channel.cpp \
-			  src/CommandHandler.cpp \
-			  src/utils.cpp \
+CXX         = c++
+CXXFLAGS    = -Wall -Wextra -Werror -std=c++98 -Iincludes -pedantic-errors -Wno-c++98-compat-pedantic -Wno-padded
 
-OBJS		= $(SRCS:.cpp=.o)
+SRCDIR      = src
+OBJDIR      = build
 
-RM			= rm -f
+SRCFILES    = main.cpp \
+              Server.cpp \
+              ServerException.cpp \
+              Client.cpp \
+              Channel.cpp \
+              CommandHandler.cpp \
+              utils.cpp \
+              action_join.cpp \
+              action_nick.cpp \
+              action_pass.cpp \
+              action_user.cpp
+
+SRCS        = $(addprefix $(SRCDIR)/, $(SRCFILES))
+OBJS        = $(addprefix $(OBJDIR)/, $(SRCFILES:.cpp=.o))
+
+RM          = rm -f
+MKDIR_P     = mkdir -p
 
 # =============================================================================
 # RULES
@@ -21,11 +34,20 @@ RM			= rm -f
 
 all: $(NAME)
 
+# Link final
 $(NAME): $(OBJS)
+	@echo "\033[0;32m[LD] $@\033[0m"
 	$(CXX) $(CXXFLAGS) $(OBJS) -o $(NAME)
 
+# Compilation
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+	@$(MKDIR_P) $(dir $@)
+	@echo "\033[0;32m[CXX] $<\033[0m"
+	@$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Nettoyage
 clean:
-	$(RM) $(OBJS)
+	$(RM) -r $(OBJDIR)
 
 fclean: clean
 	$(RM) $(NAME)

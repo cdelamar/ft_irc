@@ -319,13 +319,33 @@ const std::string &Server::getPassword() const { return _password; }
 
 void Server::sendToClient(int fd, const std::string &msg)
 {
+    std::string finalMsg = msg + "\r\n";
+    const char *data = finalMsg.c_str();
+    size_t totalSent = 0;
+    size_t toSend = finalMsg.size();
+
+    while (totalSent < toSend)
+    {
+        ssize_t sent = send(fd, data + totalSent, toSend - totalSent, 0);
+        if (sent < 0)
+        {
+            std::cerr << "[ERROR] send() failed for fd " << fd << std::endl;
+            break;
+        }
+        totalSent += static_cast<size_t>(sent);
+    }
+}
+
+/*
+void Server::sendToClient(int fd, const std::string &msg)
+{
     //fonction toute bete pour envoyer une info au client
     std::string finalMsg = msg + "\r\n";
 
     ssize_t toSend = send(fd, finalMsg.c_str(), finalMsg.size(), 0);
     if (toSend < 0)
         std::cerr << "[ERROR] can't send message to client" << std::endl;
-}
+}*/
 
 const std::string &Server::getHostname() const
 {
