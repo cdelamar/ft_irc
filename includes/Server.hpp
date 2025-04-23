@@ -22,6 +22,8 @@
 #include "Command.hpp"
 #include "Channel.hpp"
 
+class Channel;
+class Client;
 
 class Server
 {
@@ -67,8 +69,11 @@ public:
 
 	const std::string &getPassword() const;
 	const std::string &getHostname() const;
+	const std::map<int, Client> &getClients() const;
 
 	void sendToClient(int fd, const std::string &msg);
+	//void flushClientBuffer(int fd);
+
 };
 
 #endif

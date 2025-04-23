@@ -6,6 +6,9 @@
 #include <set>
 #include <vector>
 #include "Client.hpp"
+#include "Server.hpp"
+
+class Server;
 
 class Channel
 {
@@ -31,7 +34,7 @@ public:
     void demoteFromOperator(int clientFd);
     bool isOperator(int clientFd) const;
 
-    void broadcast(const std::string &message, int exceptFd = -1) const;
+    void broadcast(Server &server, const std::string &message, int exceptFd) const;
     void setTopic(const std::string &topic);
 
     size_t              memberCount() const;          // nombre de membres

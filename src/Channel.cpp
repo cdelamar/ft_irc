@@ -1,4 +1,5 @@
 #include "Channel.hpp"
+#include "Server.hpp"
 #include <iostream>
 
 Channel::Channel()
@@ -66,18 +67,15 @@ bool Channel::isOperator(int clientFd) const
     return (_operators.find(clientFd) != _operators.end());
 }
 
-void Channel::broadcast(const std::string &message, int exceptFd) const
+void Channel::broadcast(Server &server, const std::string &message, int exceptFd) const
 {
-    std::map<int, Client*>::const_iterator it = _members.begin();
-    while (it != _members.end())
+    for (std::map<int, Client*>::const_iterator it = _members.begin(); it != _members.end(); ++it)
     {
         if (it->first != exceptFd)
-        {
-            it->second->appendToBuffer(message + "\r\n");
-        }
-        ++it;
+            server.sendToClient(it->first, message);
     }
 }
+
 
 void Channel::setTopic(const std::string &topic)
 {

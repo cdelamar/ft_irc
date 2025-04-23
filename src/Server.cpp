@@ -364,9 +364,28 @@ Channel &Server::getChannel(const std::string &name)
     return _channels.at(name);
 }
 
+const std::map<int, Client> &Server::getClients() const
+{
+    return _clients;
+}
+
 void Server::createChannel(const std::string &name)
 {
     // n'insère que s'il n'existe pas déjà
     if (!channelExists(name))
         _channels.insert(std::make_pair(name, Channel(name)));
 }
+
+/*
+void Server::flushClientBuffer(int fd)
+{
+    Client &client = _clients[fd];
+    const std::string &buf = client.getBuffer(); // à créer si non existant
+
+    if (buf.empty())
+        return;
+
+    ssize_t sent = send(fd, buf.c_str(), buf.size(), 0);
+    if (sent > 0)
+        client.clearBuffer(); // ou client.consume(sent)
+}*/

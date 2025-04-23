@@ -66,5 +66,6 @@ void handleNick(Server &server, int clientFd, const Command &cmd);
 void handleUser(Server &server, int clientFd, const Command &cmd);
 void handlePass(Server &server, int clientFd, const Command &cmd);
 void handleJoin(Server &server, int clientFd, const Command &cmd);
+void handlePrivMsg(Server &server, int clientFd, const Command &cmd);
 
 #endif
