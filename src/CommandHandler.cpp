@@ -70,6 +70,8 @@ void Server::handleCommand(int clientFd, const Command &cmd)
         handleJoin(*this, clientFd, cmd);
     else if (cmd.name == "PRIVMSG")
         handlePrivMsg(*this, clientFd, cmd);
+    else if (cmd.name == "TOPIC")
+        handleTopic(*this, clientFd, cmd);
     else
     {
         std::cout << "[INFO] Commande non implémentée : " << cmd.name << std::endl;

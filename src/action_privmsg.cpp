@@ -3,12 +3,12 @@
 #include "Client.hpp"
 #include "utils.hpp"
 
-static bool isPrivateMessage(const std::string &target)
+static bool isPrivMsg(const std::string &target)
 {
     return !target.empty() && target[0] != '#';
 }
 
-static bool validatePrivMsgParams(Server &server, int fd, const Command &cmd)
+static bool validPrivMsg(Server &server, int fd, const Command &cmd)
 {
     Client &sender = server.getClient(fd);
 
@@ -27,17 +27,17 @@ static bool validatePrivMsgParams(Server &server, int fd, const Command &cmd)
     return true;
 }
 
-static std::string buildPrivMsgPrefix(const Client &client, const std::string &hostname)
+static std::string msgPrefix(const Client &client, const std::string &hostname)
 {
     return client.getNickname() + "!" + client.getUsername() + "@" + hostname;
 }
 
-static std::string buildPrivMsgResponse(const std::string &prefix, const std::string &target, const std::string &message)
+static std::string fullMsg(const std::string &prefix, const std::string &target, const std::string &message)
 {
     return ":" + prefix + " PRIVMSG " + target + " :" + message;
 }
 
-static void dispatchPrivMsgToChannel(Server &server, int senderFd, const std::string &channelName, const std::string &message)
+static void channelBroadcast(Server &server, int senderFd, const std::string &channelName, const std::string &message)
 {
     Client &sender = server.getClient(senderFd);
     if (!server.channelExists(channelName))
@@ -54,8 +54,8 @@ static void dispatchPrivMsgToChannel(Server &server, int senderFd, const std::st
         return;
     }
 
-    std::string prefix = buildPrivMsgPrefix(sender, server.getHostname());
-    std::string response = buildPrivMsgResponse(prefix, channelName, message);
+    std::string prefix = msgPrefix(sender, server.getHostname());
+    std::string response = fullMsg(prefix, channelName, message);
     chan.broadcast(server, response, senderFd);
 }
 
@@ -65,8 +65,8 @@ static void dispatchPrivMsgToUser(Server &server, int senderFd, const std::strin
     Client &sender = server.getClient(senderFd);
     bool found = false;
 
-    std::string prefix = buildPrivMsgPrefix(sender, server.getHostname());
-    std::string response = buildPrivMsgResponse(prefix, targetNick, message);
+    std::string prefix = msgPrefix(sender, server.getHostname());
+    std::string response = fullMsg(prefix, targetNick, message);
 
     for (std::map<int, Client>::const_iterator it = clients.begin(); it != clients.end(); ++it)
     {
@@ -86,14 +86,14 @@ static void dispatchPrivMsgToUser(Server &server, int senderFd, const std::strin
 
 void handlePrivMsg(Server &server, int clientFd, const Command &cmd)
 {
-    if (!validatePrivMsgParams(server, clientFd, cmd))
+    if (!validPrivMsg(server, clientFd, cmd))
         return;
 
     const std::string &target = cmd.params[0];
     const std::string &message = cmd.params[1];
 
-    if (isPrivateMessage(target))
+    if (isPrivMsg(target))
         dispatchPrivMsgToUser(server, clientFd, target, message);
     else
-        dispatchPrivMsgToChannel(server, clientFd, target, message);
+        channelBroadcast(server, clientFd, target, message);
 }

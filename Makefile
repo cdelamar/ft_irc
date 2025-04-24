@@ -21,7 +21,8 @@ SRCFILES    = main.cpp \
               action_nick.cpp \
               action_pass.cpp \
               action_user.cpp \
-			  action_privmsg.cpp
+			  action_privmsg.cpp \
+              action_topic.cpp
 
 SRCS        = $(addprefix $(SRCDIR)/, $(SRCFILES))
 OBJS        = $(addprefix $(OBJDIR)/, $(SRCFILES:.cpp=.o))
