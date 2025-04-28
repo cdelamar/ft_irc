@@ -369,11 +369,36 @@ const std::map<int, Client> &Server::getClients() const
     return _clients;
 }
 
+std::map<std::string, Channel> &Server::getChannels()
+{
+    return _channels;
+}
+
 void Server::createChannel(const std::string &name)
 {
     // n'insère que s'il n'existe pas déjà
     if (!channelExists(name))
         _channels.insert(std::make_pair(name, Channel(name)));
+}
+
+void Server::leaveAllChannels(int clientFd)
+{
+    std::map<std::string, Channel>::iterator it;
+    it = _channels.begin();
+
+    while (it != _channels.end())
+    {
+        it->second.removeMember(clientFd);
+        ++it;
+    }
+
+    return;
+}
+
+std::vector<struct pollfd> &Server::getPollFds() // TODO : TEMPORAIRE a fix plus tard c'est moche
+{
+    static std::vector<struct pollfd> dummy; // fallback si jamais, mais en vrai on va passer la vraie fds
+    return dummy;
 }
 
 /*

@@ -68,5 +68,12 @@ void handlePass(Server &server, int clientFd, const Command &cmd);
 void handleJoin(Server &server, int clientFd, const Command &cmd);
 void handleTopic(Server &server, int clientFd, const Command &cmd);
 void handlePrivMsg(Server &server, int clientFd, const Command &cmd);
+void handlePing(Server &server, int clientFd, const Command &cmd);
+void handlePong(Server &server, int clientFd, const Command &cmd);
+void handleQuit(Server &server, int clientFd, const Command &cmd);
+void handlePart(Server &server, int clientFd, const Command &cmd);
+void handleKick(Server &server, int clientFd, const Command &cmd);
+
+
 
 #endif

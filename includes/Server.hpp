@@ -39,7 +39,6 @@ private:
 	//inherente a 'pollLoop()'
 	void acceptNewClient(std::vector<struct pollfd> &fds);
 	void handleClientMessage(std::vector<struct pollfd> &fds, int i);
-	void removeClient(std::vector<struct pollfd> &fds, int fd);
 
 	//inherente a 'handleCommand'
 	std::vector<std::string> tokenizeCommand(const std::string &command);
@@ -70,9 +69,13 @@ public:
 	const std::string &getPassword() const;
 	const std::string &getHostname() const;
 	const std::map<int, Client> &getClients() const;
+	std::map<std::string, Channel> &getChannels();
 
 	void sendToClient(int fd, const std::string &msg);
 	//void flushClientBuffer(int fd);
+	void leaveAllChannels(int clientFd);
+	std::vector<struct pollfd> &getPollFds();
+	void removeClient(std::vector<struct pollfd> &fds, int fd);
 
 };
 

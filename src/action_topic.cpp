@@ -3,10 +3,10 @@
 #include "Client.hpp"
 #include "utils.hpp"
 
-static std::string stringJoin (const std::vector<std::string> &params, size_t index)
+static std::string stringJoin (const std::vector<std::string> &params)
 {
     std::string res;
-    size_t i = index;
+    size_t i = 1;
 
     while (i < params.size())
     {
@@ -61,7 +61,7 @@ void handleTopic(Server &server, int clientFd, const Command &cmd)
         return;
     }
 
-    const std::string &newTopic = stringJoin(cmd.params, 1);
+    const std::string &newTopic = stringJoin(cmd.params);
     channel.setTopic(newTopic);
 
     std::string prefix = client.getNickname() + "!" + client.getUsername() + "@" + server.getHostname();

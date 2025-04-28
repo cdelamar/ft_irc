@@ -59,7 +59,6 @@ void Server::handleCommand(int clientFd, const Command &cmd)
         return;
     }
 
-
     if (cmd.name == "PASS")
         handlePass(*this, clientFd, cmd);
     else if (cmd.name == "NICK")
@@ -72,6 +71,16 @@ void Server::handleCommand(int clientFd, const Command &cmd)
         handlePrivMsg(*this, clientFd, cmd);
     else if (cmd.name == "TOPIC")
         handleTopic(*this, clientFd, cmd);
+    else if (cmd.name == "PING")
+        handlePing(*this, clientFd, cmd);
+    else if (cmd.name == "PONG")
+        handlePong(*this, clientFd, cmd);
+    else if (cmd.name == "PART")
+        handlePart(*this, clientFd, cmd);
+    else if (cmd.name == "QUIT")
+        handleQuit(*this, clientFd, cmd);
+    else if (cmd.name == "KICK")
+        handleKick(*this, clientFd, cmd);
     else
     {
         std::cout << "[INFO] Commande non implémentée : " << cmd.name << std::endl;
