@@ -5,7 +5,7 @@
 NAME        = ircserv
 
 CXX         = c++
-CXXFLAGS    = -Wall -Wextra -Werror -std=c++98 -Iincludes -pedantic-errors -Wno-c++98-compat-pedantic -Wno-padded
+CXXFLAGS    = -Wall -Wextra -Werror -std=c++98 -Iincludes -pedantic-errors
 
 SRCDIR      = src
 OBJDIR      = build

@@ -18,6 +18,13 @@ private:
     std::map<int, Client*> _members;
     std::set<int> _operators;
 
+    // pour MODE
+    bool _inviteOnly;
+    bool _topicRestricted;
+    std::string _password;
+    size_t _userLimit;
+    bool _limitMode;
+
 public:
     // Canonical Form
     Channel();
@@ -42,6 +49,23 @@ public:
 
     const std::string &getTopic() const;
     const std::string &getName() const;
+
+    // pour MODE, prochainement
+    bool isInviteOnly() const;
+    bool isTopicRestricted() const;
+    bool hasPassword() const;
+    const std::string &getPassword() const;
+    bool hasUserLimit() const;
+    size_t getUserLimit() const;
+
+    void setInviteOnly(bool);
+    void setTopicRestricted(bool);
+    void setPassword(const std::string &);
+    void setUserLimit(size_t);
+    void clearPassword();
+    void clearUserLimit();
+
+std::string strModes() const;
 };
 
 #endif

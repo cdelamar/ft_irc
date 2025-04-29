@@ -81,6 +81,8 @@ void Server::handleCommand(int clientFd, const Command &cmd)
         handleQuit(*this, clientFd, cmd);
     else if (cmd.name == "KICK")
         handleKick(*this, clientFd, cmd);
+    else if (cmd.name == "MODE")
+        handleMode(*this, clientFd, cmd);
     else
     {
         std::cout << "[INFO] Commande non implémentée : " << cmd.name << std::endl;
