@@ -300,23 +300,9 @@ bool Server::isNicknameTaken(const std::string &nickname, int excludeFd)
     return false;
 }
 
-/*
-bool Server::isNicknameTaken(const std::string &nickname)
-{
-    std::map<int, Client>::const_iterator i;
-    i = _clients.begin();
-
-    while (i != _clients.end())
-    {
-        if (i->second.getNickname() == nickname)
-            return true;
-        i++;
-    }
-    return false;
-}*/
-
 const std::string &Server::getPassword() const { return _password; }
 
+/*
 void Server::sendToClient(int fd, const std::string &msg)
 {
     std::string finalMsg = msg + "\r\n";
@@ -334,18 +320,29 @@ void Server::sendToClient(int fd, const std::string &msg)
         }
         totalSent += static_cast<size_t>(sent);
     }
-}
+}*/
 
-/*
 void Server::sendToClient(int fd, const std::string &msg)
 {
-    //fonction toute bete pour envoyer une info au client
     std::string finalMsg = msg + "\r\n";
+    const char *data = finalMsg.c_str();
+    size_t totalSent = 0;
+    size_t toSend = finalMsg.size();
 
-    ssize_t toSend = send(fd, finalMsg.c_str(), finalMsg.size(), 0);
-    if (toSend < 0)
-        std::cerr << "[ERROR] can't send message to client" << std::endl;
-}*/
+    while (totalSent < toSend)
+    {
+        ssize_t sent = send(fd, data + totalSent, toSend - totalSent, 0);
+        if (sent < 0)
+        {
+            std::cerr << "[ERROR] send() failed for fd " << fd << std::endl;
+            // ici correction :
+            std::vector<struct pollfd> &fds = getPollFds(); // attention, getPollFds() actuel retourne un dummy
+            removeClient(fds, fd); // deco propre
+            return;
+        }
+        totalSent += static_cast<size_t>(sent);
+    }
+}
 
 const std::string &Server::getHostname() const
 {
@@ -400,17 +397,3 @@ std::vector<struct pollfd> &Server::getPollFds() // TODO : TEMPORAIRE a fix plus
     static std::vector<struct pollfd> dummy; // fallback si jamais, mais en vrai on va passer la vraie fds
     return dummy;
 }
-
-/*
-void Server::flushClientBuffer(int fd)
-{
-    Client &client = _clients[fd];
-    const std::string &buf = client.getBuffer(); // à créer si non existant
-
-    if (buf.empty())
-        return;
-
-    ssize_t sent = send(fd, buf.c_str(), buf.size(), 0);
-    if (sent > 0)
-        client.clearBuffer(); // ou client.consume(sent)
-}*/
