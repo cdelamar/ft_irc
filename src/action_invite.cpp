@@ -1,54 +1,63 @@
 #include "Server.hpp"
-#include "Channel.hpp"
 #include "Client.hpp"
+#include "Channel.hpp"
 #include "Command.hpp"
 
-static Client* findByNick(Server &srv, const std::string &nick)
+static Client* nickFinder(Server &srv, const std::string &nick)
 {
-    std::vector<int> fds = srv.getClientFds();
-    for (size_t i = 0; i < fds.size(); ++i)
-    {
-        Client &c = srv.getClient(fds[i]);
-        if (c.getNickname() == nick)
-            return &c;
+    const std::map<int, Client> &clients = srv.getClients();
+    std::map<int, Client>::const_iterator it = clients.begin();
+
+    while (it != clients.end())
+	{
+        if (it->second.getNickname() == nick)
+            return &(srv.getClient(it->first));
+        ++it;
     }
+
     return 0;
 }
 
-void handleInvite(Server &srv, int fd, const Command &cmd)
+static bool already_in(Channel &c, int fd)
+{
+    return c.isMember(fd);
+}
+
+static void invite(Server &srv, Client &src, Client &dest, Channel &channel) {
+    channel.addInvite(dest.getFd());
+
+    std::string ch = channel.getName();
+    std::string n1 = src.getNickname();
+    std::string n2 = dest.getNickname();
+
+    srv.sendToClient(src.getFd(), "341 " + n2 + " " + ch);
+    srv.sendToClient(dest.getFd(), ":" + n1 + " INVITE " + n2 + " :" + ch);
+}
+
+void handleInvite(Server &server, int clientFd, const Command &cmd)
 {
     if (cmd.params.size() < 2)
-        return srv.sendToClient(fd, "461 INVITE :Need more parameters");
+        return server.sendToClient(clientFd, "461 INVITE :Need more parameters");
 
     std::string nick = cmd.params[0];
     std::string chan = cmd.params[1];
 
-    if (!srv.channelExists(chan))
-        return srv.sendToClient(fd, "403 " + chan + " :No such channel");
+    if (!server.channelExists(chan))
+        return server.sendToClient(clientFd, "403 " + chan + " :No such channel");
 
-    Channel &c = srv.getChannel(chan);
+    Channel &c = server.getChannel(chan);
+    if (!c.isMember(clientFd))
+        return server.sendToClient(clientFd, "442 " + chan + " :You're not on that channel");
 
-    if (!c.isMember(fd))
-        return srv.sendToClient(fd, "442 " + chan + " :You're not on that channel");
+    if (!c.isOperator(clientFd))
+        return server.sendToClient(clientFd, "482 " + chan + " :You're not channel operator");
 
-    if (!c.isOperator(fd))
-        return srv.sendToClient(fd, "482 " + chan + " :You're not channel operator");
-
-    Client *target = findByNick(srv, nick);
+    Client *target = nickFinder(server, nick);
     if (!target)
-        return srv.sendToClient(fd, "401 " + nick + " :No such nick");
+        return server.sendToClient(clientFd, "401 " + nick + " :No such nick");
 
-    if (c.isMember(target->getFd()))
-        return srv.sendToClient(fd, "443 " + nick + " " + chan + " :is already on channel");
+    if (already_in(c, target->getFd()))
+        return server.sendToClient(clientFd, "443 " + nick + " " + chan + " :is already on channel");
 
-    // Ajouter à la liste des invités (vector)
-    c.addInvite(target->getFd());
-
-    // Confirmation à l'invitant
-    srv.sendToClient(fd, "341 " + nick + " " + chan);
-
-    // Notification à l'invité
-    Client &sender = srv.getClient(fd);
-    std::string msg = ":" + sender.getNickname() + "!" + sender.getUsername() + "@localhost INVITE " + nick + " :" + chan;
-    srv.sendToClient(target->getFd(), msg);
+    invite(server, server.getClient(clientFd), *target, c);
 }
