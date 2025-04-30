@@ -74,6 +74,7 @@ void handleQuit(Server &server, int clientFd, const Command &cmd);
 void handlePart(Server &server, int clientFd, const Command &cmd);
 void handleKick(Server &server, int clientFd, const Command &cmd);
 void handleMode(Server &server, int clientFd, const Command &cmd);
+void handleInvite(Server &server, int clientFd, const Command &cmd);
 
 
 

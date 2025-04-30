@@ -83,6 +83,8 @@ void Server::handleCommand(int clientFd, const Command &cmd)
         handleKick(*this, clientFd, cmd);
     else if (cmd.name == "MODE")
         handleMode(*this, clientFd, cmd);
+    else if (cmd.name == "INVITE")
+        handleInvite(*this, clientFd, cmd);
     else
     {
         std::cout << "[INFO] Commande non implémentée : " << cmd.name << std::endl;

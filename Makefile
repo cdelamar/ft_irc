@@ -27,6 +27,8 @@ SRCFILES    = main.cpp \
               action_part.cpp \
               action_quit.cpp \
               action_kick.cpp \
+              action_mode.cpp \
+              action_invite.cpp \
 
 SRCS        = $(addprefix $(SRCDIR)/, $(SRCFILES))
 OBJS        = $(addprefix $(OBJDIR)/, $(SRCFILES:.cpp=.o))

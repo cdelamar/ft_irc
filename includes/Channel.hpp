@@ -17,6 +17,7 @@ private:
     std::string _topic;
     std::map<int, Client*> _members;
     std::set<int> _operators;
+    std::vector<int> _invited;
 
     // pour MODE
     bool _inviteOnly;
@@ -65,7 +66,11 @@ public:
     void clearPassword();
     void clearUserLimit();
 
-std::string strModes() const;
+    std::string strModes() const;
+
+    void addInvite(int fd);
+    bool isInvited(int fd) const;
+    void removeInvite(int fd);
 };
 
 #endif

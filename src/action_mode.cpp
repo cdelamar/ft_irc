@@ -4,24 +4,24 @@
 #include "Command.hpp"
 
 
-static bool mode_i(Channel &c, bool add)
+static bool mod_i(Channel &chan, bool add)
 {
-    c.setInviteOnly(add);
+    chan.setInviteOnly(add);
     return true;
 }
 
-static bool mode_t(Channel &c, bool add)
+static bool mod_t(Channel &chan, bool add)
 {
-    c.setTopicRestricted(add);
+    chan.setTopicRestricted(add);
     return true;
 }
 
-static bool mode_k(Server &srv, int fd, Channel &c, const Command &cmd, size_t &i, bool add) {
+static bool mod_k(Server &serv, int fd, Channel &c, const Command &cmd, size_t &i, bool add) {
     if (add)
 	{
         if (i >= cmd.params.size())
 		{
-            srv.sendToClient(fd, "461 MODE +k :Missing parameter");
+            serv.sendToClient(fd, "461 MODE +k :Missing parameter");
             return false;
         }
         c.setPassword(cmd.params[i++]);
@@ -31,13 +31,13 @@ static bool mode_k(Server &srv, int fd, Channel &c, const Command &cmd, size_t &
     return true;
 }
 
-static bool mode_l(Server &srv, int fd, Channel &c, const Command &cmd, size_t &i, bool add)
+static bool mod_l(Server &serv, int fd, Channel &c, const Command &cmd, size_t &i, bool add)
 {
     if (add)
 	{
         if (i >= cmd.params.size())
 		{
-            srv.sendToClient(fd, "461 MODE +l :Missing parameter");
+            serv.sendToClient(fd, "461 MODE +l :Missing parameter");
             return false;
         }
         c.setUserLimit(std::atoi(cmd.params[i++].c_str()));
@@ -47,13 +47,13 @@ static bool mode_l(Server &srv, int fd, Channel &c, const Command &cmd, size_t &
     return true;
 }
 
-static bool unknown(Server &srv, int fd, char flag)
+static bool unknown(Server &serv, int fd, char flag)
 {
-    srv.sendToClient(fd, "472 " + std::string(1, flag) + " :uknown mode flag");
+    serv.sendToClient(fd, "472 " + std::string(1, flag) + " :uknown mode flag");
     return true;
 }
 
-static bool parsingMode(Server &srv, int fd, Channel &c, const Command &cmd) {
+static bool parsingMode(Server &serv, int fd, Channel &c, const Command &cmd) {
     std::string mod = cmd.params[1];
     bool add = true;
     size_t i = 2;
@@ -68,11 +68,15 @@ static bool parsingMode(Server &srv, int fd, Channel &c, const Command &cmd) {
 
         bool ok = true;
 
-        if (flag == 'i') ok = mode_i(c, add);
-        else if (flag == 't') ok = mode_t(c, add);
-        else if (flag == 'k') ok = mode_k(srv, fd, c, cmd, i, add);
-        else if (flag == 'l') ok = mode_l(srv, fd, c, cmd, i, add);
-        else ok = unknown(srv, fd, flag);
+        if (flag == 'i')
+			ok = mod_i(c, add);
+        else if (flag == 't')
+			ok = mod_t(c, add);
+        else if (flag == 'k')
+			ok = mod_k(serv, fd, c, cmd, i, add);
+        else if (flag == 'l')
+			ok = mod_l(serv, fd, c, cmd, i, add);
+        else ok = unknown(serv, fd, flag);
 
         if (!ok) return false;
         ++pos;
@@ -82,25 +86,25 @@ static bool parsingMode(Server &srv, int fd, Channel &c, const Command &cmd) {
 }
 
 // handleMode : commande IRC MODE
-void handleMode(Server &srv, int fd, const Command &cmd)
+void handleMode(Server &server, int clientFd, const Command &cmd)
 {
     if (cmd.params.empty())
-        return srv.sendToClient(fd, "461 MODE :Missing parameters");
+        return server.sendToClient(clientFd, "461 MODE :Missing parameters");
 
     std::string ch = cmd.params[0];
-    if (!srv.channelExists(ch))
-        return srv.sendToClient(fd, "403 " + ch + " :No such channel");
+    if (!server.channelExists(ch))
+        return server.sendToClient(clientFd, "403 " + ch + " :No such channel");
 
-    Channel &c = srv.getChannel(ch);
+    Channel &c = server.getChannel(ch);
 
     if (cmd.params.size() == 1)
-        return srv.sendToClient(fd, "324 " + ch + " " + c.strModes());
+        return server.sendToClient(clientFd, "324 " + ch + " " + c.strModes());
 
-    if (!c.isOperator(fd))
-        return srv.sendToClient(fd, "482 " + ch + " :You're not channel operator");
+    if (!c.isOperator(clientFd))
+        return server.sendToClient(clientFd, "482 " + ch + " :You're not channel operator");
 
-    if (!parsingMode(srv, fd, c, cmd))
+    if (!parsingMode(server, clientFd, c, cmd))
         return;
 
-    srv.sendToClient(fd, "324 " + ch + " " + c.strModes());
+    server.sendToClient(clientFd, "324 " + ch + " " + c.strModes());
 }
