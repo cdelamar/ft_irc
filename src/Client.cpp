@@ -101,8 +101,13 @@ void Client::checkRegistered()
 	mais pas necessaire pour la machine
 	*/
 
-	if (!_username.empty() && !_nickname.empty())
-		_isRegistered = true;
+    if (_isRegistered)
+        return;
+    if (!_nickname.empty() && !_username.empty() && _isPassSaved)
+    {
+        _isRegistered = true;
+        // welcome message ????
+    }
 }
 
 bool Client::isPassSaved() const { return _isPassSaved; }

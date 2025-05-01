@@ -28,9 +28,15 @@ void handleNick(Server &server, int clientFd, const Command &cmd)
         return;
     }
 
+    std::string prefix;
+    if (!client.getNickname().empty())
+        prefix = ":" + client.getNickname() + "!" + client.getUsername() + "@" + server.getHostname();
+    else
+        prefix = ":" + server.getHostname();
+
     client.setNickname(newNick);
 
-    server.sendToClient(clientFd, ":" + server.getHostname() + " NICK :" + newNick);
+    server.sendToClient(clientFd, prefix + " NICK :" + newNick);
 
     client.checkRegistered();
 
