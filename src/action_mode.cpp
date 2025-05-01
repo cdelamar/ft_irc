@@ -92,8 +92,12 @@ void handleMode(Server &server, int clientFd, const Command &cmd)
         return server.sendToClient(clientFd, "461 MODE :Missing parameters");
 
     std::string ch = cmd.params[0];
+
+    if (cmd.params[0][0] != '#')
+	    return;
+
     if (!server.channelExists(ch))
-        return server.sendToClient(clientFd, "403 " + ch + " :No such channel");
+        return server.sendToClient(clientFd, "c'est la");
 
     Channel &c = server.getChannel(ch);
 
