@@ -1,5 +1,12 @@
 #include "utils.hpp"
 
+std::string cpp98_toString (int n)
+{
+    std::ostringstream oss;
+    oss << n;
+    return oss.str();
+}
+
 bool isValidNickname(const std::string &nickname)
 {
 	if (nickname.empty())

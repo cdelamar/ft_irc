@@ -1,55 +1,99 @@
-#include "CommandHandler.hpp"
+#include "Server.hpp"
+#include "Client.hpp"
+#include "Channel.hpp"
+#include "Command.hpp"
 #include "utils.hpp"
 
-void handleJoin(Server &server, int clientFd, const Command &cmd)
+static bool parsingJoin(const Command &cmd, std::string &chan)
 {
-    if (cmd.params.empty())
-    {
-        server.sendToClient(clientFd, ":" + server.getHostname() + " 461 * JOIN :Not enough parameters");
-        return;
-    }
+	if (cmd.params.empty())
+		return false;
+	chan = cmd.params[0];
+	return true;
+}
 
-    const std::string &chanName = cmd.params[0];
-    Client &client = server.getClient(clientFd);
+static bool join_i(Channel &c, int fd)
+{
+	return !c.isInviteOnly() || c.isInvited(fd);
+}
 
-    if (!server.channelExists(chanName))
-        server.createChannel(chanName);
+static bool join_k(const Channel &c, const Command &cmd)
+{
+	if (!c.hasPassword())
+		return true;
+	if (cmd.params.size() < 2)
+		return false;
+	return cmd.params[1] == c.getPassword();
+}
 
-    Channel &chan = server.getChannel(chanName);
+static bool join_l(const Channel &c)
+{
+	if (!c.hasUserLimit())
+		return true;
+	return c.memberCount() < c.getUserLimit();
+}
 
-    if (!chan.isMember(clientFd))
-    {
-        chan.addMember(client);
+static int permChecker(Channel &c, int fd, const Command &cmd)
+{
+	if (!join_i(c, fd))
+        return 473;
+	if (!join_k(c, cmd))
+        return 475;
+	if (!join_l(c))
+        return 471;
+	return 0;
+}
 
-        if (chan.memberCount() == 1)
-            chan.promoteToOperator(clientFd);
+static void sendJoinMsg(Server &srv, Channel &c, Client &cli)
+{
+	std::string ch = c.getName();
+	std::string prefix = ":" + cli.getNickname() + "!" + cli.getUsername() + "@localhost";
 
-        // JOIN notification au format IRC
-        std::string prefix = client.getNickname() + "!" + client.getUsername() + "@" + server.getHostname();
-        server.sendToClient(client.getFd(), ":" + prefix + " JOIN :" + chan.getName());
+	c.broadcast(srv, prefix + " JOIN :" + ch, -1);
 
-        // Répondre au TOPIC (331 ou 332)
-        const std::string &topic = chan.getTopic();
-        if (topic.empty())
-        {
-            server.sendToClient(clientFd, ":" + server.getHostname() + " 331 " + client.getNickname() + " " + chan.getName() + " :No topic is set");
-        }
-        else
-        {
-            server.sendToClient(clientFd, ":" + server.getHostname() + " 332 " + client.getNickname() + " " + chan.getName() + " :" + topic);
-        }
+	if (c.getTopic().empty())
+		srv.sendToClient(cli.getFd(), "331 " + ch + " :No topic is set");
+	else
+		srv.sendToClient(cli.getFd(), "332 " + ch + " :" + c.getTopic());
 
-        // Répondre à la liste des NAMES
-        std::vector<int> memberFds = chan.getMemberFds();
-        std::string names;
-        for (size_t i = 0; i < memberFds.size(); ++i)
-        {
-            names += server.getClient(memberFds[i]).getNickname();
-            if (i + 1 < memberFds.size())
-                names += " ";
-        }
+	std::vector<int> members = c.getMemberFds();
+	std::string names;
 
-        server.sendToClient(clientFd, ":" + server.getHostname() + " 353 " + client.getNickname() + " = " + chan.getName() + " :" + names);
-        server.sendToClient(clientFd, ":" + server.getHostname() + " 366 " + client.getNickname() + " " + chan.getName() + " :End of /NAMES list");
-    }
+	for (size_t i = 0; i < members.size(); ++i)
+	{
+		Client &m = srv.getClient(members[i]);
+		if (!names.empty()) names += " ";
+		if (c.isOperator(members[i])) names += "@";
+		names += m.getNickname();
+	}
+
+	srv.sendToClient(cli.getFd(), "353 " + cli.getNickname() + " = " + ch + " :" + names);
+	srv.sendToClient(cli.getFd(), "366 " + cli.getNickname() + " " + ch + " :End of /NAMES");
+}
+
+void handleJoin(Server &srv, int fd, const Command &cmd)
+{
+	std::string chan;
+	if (!parsingJoin(cmd, chan))
+		return srv.sendToClient(fd, "461 JOIN :Need more parameters");
+
+	if (!srv.channelExists(chan))
+		srv.createChannel(chan);
+
+	Channel &c = srv.getChannel(chan);
+	int err = permChecker(c, fd, cmd);
+	if (err)
+		return srv.sendToClient(fd, cpp98_toString(err) + " " + chan + " :Cannot join channel");
+
+	if (c.isMember(fd))
+		return;
+
+	Client &cli = srv.getClient(fd);
+	c.addMember(cli);
+	c.removeInvite(fd);
+
+	sendJoinMsg(srv, c, cli);
+
+	if (c.memberCount() == 1)
+		c.promoteToOperator(fd);
 }

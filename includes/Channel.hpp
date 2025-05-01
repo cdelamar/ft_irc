@@ -17,7 +17,7 @@ private:
     std::string _topic;
     std::map<int, Client*> _members;
     std::set<int> _operators;
-    std::vector<int> _invited;
+    std::set<int> _invited;
 
     // pour MODE
     bool _inviteOnly;

@@ -129,20 +129,15 @@ std::string Channel::strModes() const {
 }
 
 
-void Channel::addInvite(int fd)
-{
-    if (std::find(_invited.begin(), _invited.end(), fd) == _invited.end())
-        _invited.push_back(fd);
-}
+void Channel::addInvite(int fd)       { _invited.insert(fd); }
+bool Channel::isInvited(int fd) const { return _invited.count(fd); }
+void Channel::removeInvite(int fd)    { _invited.erase(fd); }
 
-bool Channel::isInvited(int fd) const
-{
-    return std::find(_invited.begin(), _invited.end(), fd) != _invited.end();
-}
+bool Channel::isInviteOnly() const { return _inviteOnly; }
+bool Channel::hasPassword() const { return !_password.empty(); }
+const std::string &Channel::getPassword() const { return _password; }
 
-void Channel::removeInvite(int fd)
-{
-    std::vector<int>::iterator it = std::find(_invited.begin(), _invited.end(), fd);
-    if (it != _invited.end())
-        _invited.erase(it);
-}
+bool Channel::hasUserLimit() const { return _limitMode; }
+size_t Channel::getUserLimit() const { return _userLimit; }
+
+bool Channel::isTopicRestricted() const { return _topicRestricted; }
