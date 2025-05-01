@@ -69,13 +69,15 @@ bool Channel::isOperator(int clientFd) const
 
 void Channel::broadcast(Server &server, const std::string &message, int exceptFd) const
 {
-    for (std::map<int, Client*>::const_iterator it = _members.begin(); it != _members.end(); ++it)
+    std::map<int, Client*>::const_iterator it = _members.begin();
+
+    while (it != _members.end())
     {
-        if (it->first != exceptFd)
+        if (it->first != exceptFd && it->second != NULL)
             server.sendToClient(it->first, message);
+        ++it;
     }
 }
-
 
 void Channel::setTopic(const std::string &topic)
 {
