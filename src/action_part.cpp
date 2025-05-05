@@ -13,6 +13,10 @@ void handlePart(Server &server, int clientFd, const Command &cmd)
 
     const std::string &chanName = cmd.params[0];
 
+    std::string reason;
+    if (cmd.params.size() > 1)
+        reason = cmd.params[1];
+
     if (!server.channelExists(chanName))
     {
         server.sendToClient(clientFd, ":" + server.getHostname() + " 403 " + chanName + " :No such channel");
@@ -32,6 +36,8 @@ void handlePart(Server &server, int clientFd, const Command &cmd)
     // Message de PART au format IRC
     std::string prefix = client.getNickname() + "!" + client.getUsername() + "@" + server.getHostname();
     std::string partMsg = ":" + prefix + " PART " + chanName;
+    if (!reason.empty())
+        partMsg += " :" + reason;
 
     chan.broadcast(server, partMsg, clientFd); // prevenir tout le monde sauf celui qui part
     server.sendToClient(clientFd, partMsg);     // prevenir celui qui part
