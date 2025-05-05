@@ -361,6 +361,11 @@ Channel &Server::getChannel(const std::string &name)
     return _channels.at(name);
 }
 
+std::map<int, Client> &Server::getClients()
+{
+    return _clients;
+}
+
 const std::map<int, Client> &Server::getClients() const
 {
     return _clients;

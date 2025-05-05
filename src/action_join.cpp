@@ -71,29 +71,50 @@ static void sendJoinMsg(Server &srv, Channel &c, Client &cli)
 	srv.sendToClient(cli.getFd(), "366 " + cli.getNickname() + " " + ch + " :End of /NAMES");
 }
 
+static bool sendError(Server &srv, int fd, const std::string &chanName, int err)
+{
+	if (err == 473)
+	{
+		srv.sendToClient(fd, "473 " + chanName + " :Cannot join channel (+i)");
+		return true;
+	}
+	else if (err == 475)
+	{
+		srv.sendToClient(fd, "475 " + chanName + " :Cannot join channel (+k)");
+		return true;
+	}
+	else if (err == 471)
+	{
+		srv.sendToClient(fd, "471 " + chanName + " :Cannot join channel (+l)");
+		return true;
+	}
+
+	return false;
+}
+
 void handleJoin(Server &srv, int fd, const Command &cmd)
 {
-	std::string chan;
-	if (!parsingJoin(cmd, chan))
+	std::string chanName;
+	if (!parsingJoin(cmd, chanName))
 		return srv.sendToClient(fd, "461 JOIN :Need more parameters");
 
-	if (!srv.channelExists(chan))
-		srv.createChannel(chan);
+	if (!srv.channelExists(chanName))
+		srv.createChannel(chanName);
 
-	Channel &c = srv.getChannel(chan);
-	int err = permChecker(c, fd, cmd);
-	if (err)
-		return srv.sendToClient(fd, cpp98_toString(err) + " " + chan + " :Cannot join channel");
-
-	if (c.isMember(fd))
+	Channel &channel = srv.getChannel(chanName);
+	if (channel.isMember(fd))
 		return;
 
-	Client &cli = srv.getClient(fd);
-	c.addMember(cli);
-	c.removeInvite(fd);
+	int err = permChecker(channel, fd, cmd);
+	if (sendError(srv, fd, chanName, err))
+		return;
 
-	sendJoinMsg(srv, c, cli);
+	Client &client = srv.getClient(fd);
+	channel.addMember(client);
+	channel.removeInvite(fd);
 
-	if (c.memberCount() == 1)
-		c.promoteToOperator(fd);
+	sendJoinMsg(srv, channel, client);
+
+	if (channel.memberCount() == 1)
+		channel.promoteToOperator(fd);
 }

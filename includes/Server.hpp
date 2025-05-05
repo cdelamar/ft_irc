@@ -68,6 +68,12 @@ public:
 
 	const std::string &getPassword() const;
 	const std::string &getHostname() const;
+
+	// TODO
+	// je me retrouve avec deux version de getClients pour eviter le shallow copy 
+	// a voir si je peux pas faire autrement par la suite
+
+	std::map<int, Client> &getClients();  
 	const std::map<int, Client> &getClients() const;
 	std::map<std::string, Channel> &getChannels();
 

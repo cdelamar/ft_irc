@@ -3,6 +3,13 @@
 #include "Client.hpp"
 #include "utils.hpp"
 
+static std::string ircNormalize(const std::string &s)
+{
+    std::string res = s;
+    std::transform(res.begin(), res.end(), res.begin(), ::tolower);
+    return res;
+}
+
 static bool isPrivMsg(const std::string &target)
 {
     return !target.empty() && target[0] != '#';
@@ -59,18 +66,19 @@ static void channelBroadcast(Server &server, int senderFd, const std::string &ch
     chan.broadcast(server, response, senderFd);
 }
 
-static void dispatchPrivMsgToUser(Server &server, int senderFd, const std::string &targetNick, const std::string &message)
+static void sendMsg(Server &server, int senderFd, const std::string &targetNick, const std::string &message)
 {
-    const std::map<int, Client> &clients = server.getClients();
+    std::map<int, Client> &clients = server.getClients(); // le s est important
     Client &sender = server.getClient(senderFd);
     bool found = false;
 
+    std::string normalizedTarget = ircNormalize(targetNick);
     std::string prefix = msgPrefix(sender, server.getHostname());
     std::string response = fullMsg(prefix, targetNick, message);
 
-    for (std::map<int, Client>::const_iterator it = clients.begin(); it != clients.end(); ++it)
+    for (std::map<int, Client>::iterator it = clients.begin(); it != clients.end(); ++it)
     {
-        if (it->second.getNickname() == targetNick)
+        if (ircNormalize(it->second.getNickname()) == normalizedTarget && it->second.isRegistered()) // modif ici
         {
             server.sendToClient(it->first, response);
             found = true;
@@ -84,6 +92,7 @@ static void dispatchPrivMsgToUser(Server &server, int senderFd, const std::strin
     }
 }
 
+
 void handlePrivMsg(Server &server, int clientFd, const Command &cmd)
 {
     if (!validPrivMsg(server, clientFd, cmd))
@@ -93,7 +102,7 @@ void handlePrivMsg(Server &server, int clientFd, const Command &cmd)
     const std::string &message = cmd.params[1];
 
     if (isPrivMsg(target))
-        dispatchPrivMsgToUser(server, clientFd, target, message);
+        sendMsg(server, clientFd, target, message);
     else
         channelBroadcast(server, clientFd, target, message);
 }
