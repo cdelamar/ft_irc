@@ -3,6 +3,14 @@
 #include "Client.hpp"
 #include "Command.hpp"
 
+static void mod_msg(Server &serv, Client &src, Channel &chan, const std::string &flag, const std::string &param = "", bool add = true)
+{
+	std::string prefix = ":" + src.getNickname() + "!" + src.getUsername() + "@" + serv.getHostname();
+	std::string msg = prefix + " MODE " + chan.getName() + " " + (add ? "+" : "-") + flag;
+	if (!param.empty())
+		msg += " " + param;
+	chan.broadcast(serv, msg, -1);
+}
 
 static bool mod_i(Channel &chan, bool add)
 {
@@ -69,11 +77,20 @@ static bool parsingMode(Server &serv, int fd, Channel &c, const Command &cmd) {
         bool ok = true;
 
         if (flag == 'i')
+        {
             ok = mod_i(c, add);
+            if (ok)
+                mod_msg(serv, serv.getClient(fd), c, "i", "", add);
+        }
         else if (flag == 't')
             ok = mod_t(c, add);
         else if (flag == 'k')
+        {
+            std::string pwd = (i < cmd.params.size() ? cmd.params[i] : "");
             ok = mod_k(serv, fd, c, cmd, i, add);
+            if (ok)
+                mod_msg(serv, serv.getClient(fd), c, "k", add ? pwd : "", add);
+        }
         else if (flag == 'l')
             ok = mod_l(serv, fd, c, cmd, i, add);
         else if (flag == 'o')
