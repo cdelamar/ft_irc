@@ -105,16 +105,20 @@ void handleJoin(Server &srv, int fd, const Command &cmd)
 	if (channel.isMember(fd))
 		return;
 
+	Client &client = srv.getClient(fd);
+
+	bool willBeFirst = channel.memberCount() == 0;
+
 	int err = permChecker(channel, fd, cmd);
 	if (sendError(srv, fd, chanName, err))
 		return;
 
-	Client &client = srv.getClient(fd);
 	channel.addMember(client);
 	channel.removeInvite(fd);
 
-	sendJoinMsg(srv, channel, client);
-
-	if (channel.memberCount() == 1)
+	if (willBeFirst)
 		channel.promoteToOperator(fd);
+
+	sendJoinMsg(srv, channel, client);
 }
+
