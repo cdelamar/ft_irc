@@ -121,4 +121,3 @@ void handleJoin(Server &srv, int fd, const Command &cmd)
 
 	sendJoinMsg(srv, channel, client);
 }
-
